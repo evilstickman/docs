@@ -1,12 +1,10 @@
-#Sending Analitics data
+# Sending Analitics data
 
-There are plenty of web analytics tools out there which helps your marketing team understand where and how your product is going, segment.io allows you to implement the analytics API once and sends it to almost any tool out there depending on you choice
+There are a large number of web analytics tools available that can help your marketing team understand both how many users are using your product and what they are doing while they use it. Implementing these services in your Backand application is as simple as any other third-party API integration. Segment.io allows you to implement an analytics API and send it to almost any notification tool available, depending on your infrastructure needs. Normally this type of integration would be done on the client side, but there are some instances where a server-side integration is useful. In this example, we will look at implementing a Segment.io integration with your Backand application using a cutom server-side action.
 
-usually you would implement it on you client side , but in cases where you want data from your server side to be send to the analytic tool you would do it on a server side action on backand
 # Server-side Action
 
-We'll begin the application by adding a custom server-side action. This action will execute JavaScript code that send user identification data to segment and from there to Woopra or Intercom,
-
+We'll start by adding a new custom server-side action.  This action will execute JavaScript code that sends user identification data to segment.io (and, from there, to Woopra, or Intercom, or any other interested service):
 
 ```javascript
 * globals
@@ -47,8 +45,8 @@ function backandCallback(userInput, dbRow, parameters, userProfile) {
 }
 ```
 
-The above code accepts 2 parameters userId and activeApp where the userId is the user email.
-you can also send Segment.io, data collected from Backand query detailing users information
+The above code takes two parameters - userId and activeApp, with the userId being the user's email address. You can also send Segment.io data collected from Backand using a query to obtain the data you have stored on a given user.
+
 # Client-side Integration
 
-there is no client side codding
+This code has no client-side component.

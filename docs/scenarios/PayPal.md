@@ -1,19 +1,22 @@
 #Accepting Payments
 
-Once you've decided how you want to monetize your web app, you'll likely begin looking at ways to integrate your code with a vendor that will accept and process payments on your behalf. While this would be a daunting effort to perform in a custom-built environment, Backand's built-in security and stability help to ease many of the requirements that are imposed upon payment applications. Below we'll look at using a third-party vendor – [Stripe](http://www.stripe.com/) – to process payments, and examine how to integrate Stripe with a Backand application.
+Once you've decided how you want to monetize your web app, you'll likely begin looking at ways to integrate your code with a vendor that will accept and process payments on your behalf. While this would be a daunting effort to perform in a custom-built environment, Backand's built-in security and stability help to ease many of the requirements that are imposed upon payment applications. Below we'll look at using a third-party vendor – [PayPal](http://www.paypal.com/) – to process payments, and examine how to integrate PayPal with a Backand application.
 
-A quick note: The below text was adapted from the [PayPal developer docs](https://developer.paypal.com/docs/integration/direct/make-your-first-call/#make-an-api-call) and as such may not be directly usable without some modification. Please study the code to understand the content, rather than simply trying to cut-and-paste the client-side components.
-PayPal provides many types of payments including Express checkout, transactions, refund, payment with agreementId etc, for this example we choose to implement the fast and straight forward Express checkout.
+A quick note: The below text was adapted from the [PayPal developer docs](https://developer.paypal.com/docs/integration/direct/make-your-first-call/#make-an-api-call), and as such may not be directly usable without some modification. Please study the code to understand the content, rather than simply trying to cut-and-paste the client-side components.
+
+PayPal provides many options for accepting payments, including Express Checkout, transactions, refunds, payment with agreementId, and so on. In this example, we will implement Express Chackout as it is the simplest and most straightforward method to enable.
+
 # Why use a vendor?
 
 The first question that you are likely asking is “Why should I use a third-party vendor for my payment system?” The short answer, albeit not a very good one, is that a solid and reliable payments platform is not only extremely challenging, but extremely expensive as well. Setting aside the data concerns (which we have covered elsewhere), you'll need significant liquid assets available to even begin working with financial systems directly. Furthermore, you'll be accepting full fraud risk for your users – if any of your users tries to use your payments system for illegal or unethical ends, then you will be liable for the damages caused. These are just a few of the many concerns that would come with building a payment system from the ground up without using a payment vendor.
 
-With a payment vendor, on the other hand, you are able to offload all of the above issues to the vendor, allowing you to focus instead on integrating payments into your application. Stripe performs underwriting (which handles any potentially fraudulent individuals by simply preventing them from accepting payments), payment processing, communication with financial systems, and all necessary reporting as the transactions move through the various banks and financial APIs. While it would be possible to perform all of this work yourself, you'll save yourself years of labor by simply leveraging someone else's efforts.
+With a payment vendor, on the other hand, you are able to offload all of the above issues to the vendor, allowing you to focus instead on integrating payments into your application. PayPal performs underwriting (which handles any potentially fraudulent individuals by simply preventing them from accepting payments), payment processing, communication with financial systems, and all necessary reporting as the transactions move through the various banks and financial APIs. While it would be possible to perform all of this work yourself, you'll save yourself years of labor by simply leveraging someone else's efforts.
 
 # Server-side Action
 
-We'll begin the application by adding a custom server-side action. This action will execute JavaScript that implements a 2 stages process - payment API call   and approval and Approval API call, in each step we will use an access token obtained using PayPal oauth2/token call, to save calling PayPal on the sconde stage will save the token in a server side cookie (in case the token is expired will have to reach out again to PayPal oauth2/token - in the try/catch code). The first stage prepares the payment and returns a url for redirecting the user to PayPal site , after the user acknowledge the payment, PayPal redirects again to your application and awaits your Approval Api call to complete the payment. Simply use the following code in your server-side action to log your payment:
-don't forget to change the PayPal credential in the code below, to get these credentials you can [create a PayPal sandbox account](https://developer.paypal.com/developer/accounts/) ( you'll need to sign-up first in case you have done that already).
+We'll begin the application by adding a custom server-side action. This action will execute JavaScript that implements a 2 stage process. It performs the payment API call, and then the Approval API call. Each step uses an access token obtained from PayPal's oauth2/token call. To save a call to the oauth endpoint for an extra token, we'll cache the oauth token in a server side cookie (although if the cookie expires, you'll need to refresh the token from the oauth2/token endpoint. See the try-catch block below). The first stage prepares the payment and returns a url for redirecting the user to PayPal site. The second stage occurs after the user has acknowledged the payment and been brought back to your application, at which point you call the Approval API to complete the payment. THe code example below is a server-side action that implements all of the functionality necessary to register an Express Checkout payment with PayPal.
+
+Please note: Don't forget to change the PayPal credentials in the code below. These credentials represent your association with PayPal, and must be correct in order for your customer's funds to be correctly routed. To obtain these credentials, you can [create a PayPal sandbox account](https://developer.paypal.com/developer/accounts/). Note that you will first need to register for PayPal if you have not already done so.
 
 ```javascript
 
@@ -130,12 +133,11 @@ don't forget to change the PayPal credential in the code below, to get these cre
 
 ```
 
-The above code accepts the payment stage in parameters.process and execute the appropriate API call.
-in the first stage when process="Payment"- the function postPayment will POST PayPal the amount in usd and our angular client side application pages url where we want the user to be redirected after acknowledging or canceling  the payment.
-in the second stage - the Approval stage , the angular application will call the server side action with process="Approval" , PayerId and PaymentId that PayPal implanted in the query string of the return url, the postApproval function will do a POST call to PayPal with these parameters and the result will be a PayPal payment object including all the payment details and status.
+The above code takes the payment stage information in parameters.process, and executes the approprite PayPal API call. In the first stage, when directing the user to PayPal to confirm the payment, parameters.process will contain "Payment". This results in the function postPayment being called, which sends a POST command to PayPal with the payment information, along with a URL to redirect to when the user either accepts or cancels the payment. In the second payment stage, when contacting the Approval API to complete the payment, parameters.process will contain "Approval". This will result in the code calling postApproval, which issues a POST call to PayPal using the PayerID and PaymentID stored in the query string of the return URL. This function will return a PayPal payment object including all of the relevant payment details and the payment status.
+
 # Client-side Integration
 
-Once you've got the server-side action, you are just about ready to start accepting payments. The code below performs two tasks. It first calls a service to prepare the payment (Payment API in PayPal) the server side action then returns a url, the code redirect the user to this url.
+Once you've got the server-side action, you are just about ready to start accepting payments. The code below performs two tasks. It first calls a service to prepare the payment (the Payment API in PayPal), which returns a URL to which the user is redirected.
 
 ```javascript
       var self = this;
@@ -164,8 +166,7 @@ Once you've got the server-side action, you are just about ready to start accept
         }
   ```
 
-  Then , when the user approves/cancels the Payment ,PayPal the redirect the browser to the page you sent in the server- side action, in this example we used the same page by checking the querystring paymentid value to decide the stage in which we are at.
-
+  Once the user has accepted or cenceled the payment, PayPal redirects them back to the URL that was provided to the server-side action. In this example, we use the same page by checking the query string parameter paymentid. This allows the code to detect which stage of the payment process we are at.
 
   ```javascript
         //check if this is a redirect from PayPal , after the user approves the payment
@@ -184,7 +185,7 @@ Once you've got the server-side action, you are just about ready to start accept
       }
 ```
 
-Once this code has been created, we need to implement the service which calls Backand server side action. This service wraps a HTTP request to the on-demand  action we created previously. It assumes that the action's name is `PayPalPayment`, so be sure to change it to something that matches your actual implementation:
+Once this code has been added to your project, we need to implement the service that calls Backand's server side payment action. This service wraps a HTTP request to the on-demand custom action that we created earlier in the tutorial. It assumes the action name is `PayPalPayment`, so be sure to change it as appropriate to match your actual implementation:
 
 ```javascript
 /Call PayPalPayment on demand action
@@ -224,5 +225,5 @@ And with that, we've added the basic code necessary to contact PayPal and record
 
 # Conclusion
 
-The above code gives us the basis of a payments system. It can accept payments from a user, which are recorded against your own PayPal account. You can use this as a basis for a larger application, that provides a deeper integration with PayPal's API. Simply follow the pattern of wrapping the API calls in server-side actions, then calling those actions via the Backand API, and you'll have a solution built very rapidly that is both secure and scalable from day one.
+The above code gives us the basis of a payments system. It can accept payments from a user, which are recorded against your own PayPal account. You can use this as a starting point for a larger application that provides a deeper integration with PayPal's API. Simply follow the pattern of wrapping the API calls in server-side actions, then calling those actions via the Backand API, and you'll have a solution built very rapidly that is both secure and scalable from day one.
 
